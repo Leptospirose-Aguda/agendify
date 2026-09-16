@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../../core/providers/event_provider.dart';
+import '../../../models/event_model.dart';
 
 class EventFormScreen extends StatefulWidget {
   const EventFormScreen({super.key});
@@ -17,6 +22,12 @@ class _EventFormScreenState extends State<EventFormScreen> {
   TimeOfDay _startTime = TimeOfDay.now();
   TimeOfDay _endTime = TimeOfDay.now();
   bool _recurring = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _endTime = TimeOfDay(hour: (_startTime.hour + 1) % 24, minute: _startTime.minute);
+  }
 
   @override
   void dispose() {
@@ -46,7 +57,11 @@ class _EventFormScreenState extends State<EventFormScreen> {
     );
 
     if (selected != null) {
-      setState(() => _startTime = selected);
+      setState(() {
+        _startTime = selected;
+        // Auto-adjust end time if it's before start time or just to keep 1h duration
+        _endTime = TimeOfDay(hour: (_startTime.hour + 1) % 24, minute: _startTime.minute);
+      });
     }
   }
 
@@ -64,9 +79,32 @@ class _EventFormScreenState extends State<EventFormScreen> {
   void _save() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    // TODO: transformar formulário em EventModel e salvar com EventService.
+    final startDateTime = DateTime(
+      _date.year, _date.month, _date.day, _startTime.hour, _startTime.minute,
+    );
+    var endDateTime = DateTime(
+      _date.year, _date.month, _date.day, _endTime.hour, _endTime.minute,
+    );
+
+    if (endDateTime.isBefore(startDateTime)) {
+      // If end time is before start time, assume it's the next day
+      endDateTime = endDateTime.add(const Duration(days: 1));
+    }
+
+    final event = EventModel(
+      id: const Uuid().v4(),
+      title: _titleController.text.trim(),
+      start: startDateTime,
+      end: endDateTime,
+      location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+      notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+      isRecurring: _recurring,
+    );
+
+    Provider.of<EventProvider>(context, listen: false).addEvent(event);
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Evento salvo no protótipo.')),
+      const SnackBar(content: Text('Evento salvo com sucesso!')),
     );
     Navigator.of(context).pop();
   }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
-import '../../../data/mock_data.dart';
+import '../../../core/providers/task_provider.dart';
 import '../../../models/task_model.dart';
 
 class TasksScreen extends StatefulWidget {
@@ -11,20 +13,25 @@ class TasksScreen extends StatefulWidget {
 }
 
 class _TasksScreenState extends State<TasksScreen> {
-  late List<TaskModel> _tasks;
+  final _taskController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _tasks = List.of(MockData.tasks);
+  void dispose() {
+    _taskController.dispose();
+    super.dispose();
   }
 
-  void _toggleTask(int index, bool? value) {
-    setState(() {
-      _tasks[index] = _tasks[index].copyWith(
-        isCompleted: value ?? false,
-      );
-    });
+  void _addTask() {
+    final title = _taskController.text.trim();
+    if (title.isEmpty) return;
+
+    final newTask = TaskModel(
+      id: const Uuid().v4(),
+      title: title,
+    );
+
+    Provider.of<TaskProvider>(context, listen: false).addTask(newTask);
+    _taskController.clear();
   }
 
   @override
@@ -33,39 +40,86 @@ class _TasksScreenState extends State<TasksScreen> {
       appBar: AppBar(
         title: const Text('Tarefas'),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        child: const Icon(Icons.add),
-      ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(20),
-        itemCount: _tasks.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
-        itemBuilder: (context, index) {
-          final task = _tasks[index];
+      body: Consumer<TaskProvider>(
+        builder: (context, provider, child) {
+          final pendingTasks = provider.pendingTasks;
+          final completedTasks = provider.completedTasks;
 
-          return Card(
-            child: CheckboxListTile(
-              value: task.isCompleted,
-              onChanged: (value) => _toggleTask(index, value),
-              title: Text(
-                task.title,
-                style: TextStyle(
-                  decoration:
-                      task.isCompleted ? TextDecoration.lineThrough : null,
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _taskController,
+                        decoration: const InputDecoration(
+                          hintText: 'Adicionar nova tarefa...',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        onSubmitted: (_) => _addTask(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      onPressed: _addTask,
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
                 ),
               ),
-              subtitle: task.deadline == null
-                  ? const Text('Sem prazo')
-                  : Text(
-                      'Prazo: '
-                      '${task.deadline!.day.toString().padLeft(2, '0')}/'
-                      '${task.deadline!.month.toString().padLeft(2, '0')}/'
-                      '${task.deadline!.year}',
-                    ),
-            ),
+              Expanded(
+                child: ListView(
+                  children: [
+                    if (pendingTasks.isNotEmpty) ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text('Pendentes', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                      ),
+                      ...pendingTasks.map((task) => _buildTaskTile(task, provider)),
+                    ],
+                    if (completedTasks.isNotEmpty) ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text('Concluídas', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                      ),
+                      ...completedTasks.map((task) => _buildTaskTile(task, provider)),
+                    ],
+                    if (pendingTasks.isEmpty && completedTasks.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Center(
+                          child: Text('Nenhuma tarefa ainda.', style: TextStyle(color: Colors.grey)),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildTaskTile(TaskModel task, TaskProvider provider) {
+    return ListTile(
+      leading: Checkbox(
+        value: task.isCompleted,
+        onChanged: (_) => provider.toggleTaskCompletion(task),
+      ),
+      title: Text(
+        task.title,
+        style: TextStyle(
+          decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+          color: task.isCompleted ? Colors.grey : null,
+        ),
+      ),
+      trailing: IconButton(
+        icon: const Icon(Icons.delete_outline, color: Colors.red),
+        onPressed: () => provider.deleteTask(task.id),
       ),
     );
   }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/routes/app_routes.dart';
+import '../../../core/providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,6 +14,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -20,8 +23,26 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
-    Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+  Future<void> _login() async {
+    setState(() => _isLoading = true);
+    
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.login(
+      _emailController.text.trim(), 
+      _passwordController.text.trim(),
+    );
+    
+    if (!mounted) return;
+    
+    setState(() => _isLoading = false);
+    
+    if (success) {
+      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Credenciais inválidas. Digite qualquer e-mail e senha.')),
+      );
+    }
   }
 
   @override
@@ -69,9 +90,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: _login,
-                      icon: const Icon(Icons.login),
-                      label: const Text('Entrar'),
+                      onPressed: _isLoading ? null : _login,
+                      icon: _isLoading 
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.login),
+                      label: Text(_isLoading ? 'Entrando...' : 'Entrar'),
                     ),
                   ),
                   const SizedBox(height: 12),

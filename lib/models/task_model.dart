@@ -24,4 +24,22 @@ class TaskModel {
       isCompleted: isCompleted ?? this.isCompleted,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'deadline': deadline?.toIso8601String(),
+      'isCompleted': isCompleted,
+    };
+  }
+
+  factory TaskModel.fromJson(Map<String, dynamic> map) {
+    return TaskModel(
+      id: map['id'] as String,
+      title: map['title'] as String,
+      deadline: map['deadline'] != null ? DateTime.parse(map['deadline'] as String) : null,
+      isCompleted: map['isCompleted'] as bool? ?? false,
+    );
+  }
 }

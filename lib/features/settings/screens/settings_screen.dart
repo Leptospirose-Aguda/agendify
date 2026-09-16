@@ -26,23 +26,24 @@ class SettingsScreen extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 12),
-          RadioListTile<ThemeMode>(
-            value: ThemeMode.system,
-            groupValue: currentThemeMode,
-            onChanged: (value) => onThemeChanged(value!),
-            title: const Text('Seguir sistema'),
-          ),
-          RadioListTile<ThemeMode>(
-            value: ThemeMode.light,
-            groupValue: currentThemeMode,
-            onChanged: (value) => onThemeChanged(value!),
-            title: const Text('Modo claro'),
-          ),
-          RadioListTile<ThemeMode>(
-            value: ThemeMode.dark,
-            groupValue: currentThemeMode,
-            onChanged: (value) => onThemeChanged(value!),
-            title: const Text('Modo escuro'),
+          Card(
+            child: Column(
+              children: [
+                for (final option in [
+                  (ThemeMode.system, 'Seguir sistema', Icons.brightness_auto),
+                  (ThemeMode.light, 'Modo claro', Icons.light_mode_outlined),
+                  (ThemeMode.dark, 'Modo escuro', Icons.dark_mode_outlined),
+                ])
+                  ListTile(
+                    leading: Icon(option.$3),
+                    title: Text(option.$2),
+                    trailing: currentThemeMode == option.$1
+                        ? const Icon(Icons.check_circle, color: Colors.blue)
+                        : const Icon(Icons.radio_button_unchecked),
+                    onTap: () => onThemeChanged(option.$1),
+                  ),
+              ],
+            ),
           ),
           const Divider(height: 36),
           ListTile(
