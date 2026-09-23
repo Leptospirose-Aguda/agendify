@@ -56,10 +56,17 @@ class _LoginScreenState extends State<LoginScreen> {
               constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 children: [
-                  Image.asset(
-                    'assets/images/agendify_logo.png',
-                    height: 120,
-                    fit: BoxFit.contain,
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Image.asset(
+                      'assets/images/agendify_logo.png',
+                      height: 100,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   Text(
