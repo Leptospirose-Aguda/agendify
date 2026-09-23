@@ -7,8 +7,10 @@ import 'app.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/providers/event_provider.dart';
 import 'core/providers/task_provider.dart';
+import 'core/providers/category_provider.dart';
 import 'services/event_service.dart';
 import 'services/task_service.dart';
+import 'services/category_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,9 +28,9 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => EventProvider(EventService())),
         ChangeNotifierProvider(create: (_) => TaskProvider(TaskService())),
+        ChangeNotifierProvider(create: (_) => CategoryProvider(CategoryService())),
       ],
       child: const AgendifyApp(),
     ),
   );
 }
-

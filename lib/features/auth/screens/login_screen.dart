@@ -5,6 +5,7 @@ import '../../../core/routes/app_routes.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/task_provider.dart';
 import '../../../core/providers/event_provider.dart';
+import '../../../core/providers/category_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,6 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // Captura providers antes do await para evitar uso de contexto após gap assíncrono
     final taskProvider = Provider.of<TaskProvider>(context, listen: false);
     final eventProvider = Provider.of<EventProvider>(context, listen: false);
+    final categoryProvider = Provider.of<CategoryProvider>(context, listen: false);
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
@@ -47,6 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success) {
       await taskProvider.loadTasks();
       await eventProvider.loadEvents();
+      await categoryProvider.loadCategories();
       navigator.pushReplacementNamed(AppRoutes.home);
     } else {
       messenger.showSnackBar(
