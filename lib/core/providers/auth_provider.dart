@@ -57,49 +57,71 @@ class AuthProvider extends ChangeNotifier {
     _isLoggedIn = true;
   }
 
-  Future<bool> login(String emailInput, String password) async {
-    if (emailInput.isEmpty || password.isEmpty) return false;
+  /// Retorna null em caso de sucesso ou a mensagem de erro em caso de falha.
+  Future<String?> login(String emailInput, String password, {bool forceCreate = false}) async {
+    if (emailInput.isEmpty || password.isEmpty) return 'Preencha e-mail e senha.';
 
     try {
       UserCredential credential;
-      try {
-        credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      if (forceCreate) {
+        credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: emailInput,
           password: password,
         );
-      } on FirebaseAuthException catch (e) {
-        if (e.code == 'user-not-found' ||
-            e.code == 'invalid-credential' ||
-            e.code == 'channel-error') {
-          credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      } else {
+        try {
+          credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
             email: emailInput,
             password: password,
           );
-        } else {
-          rethrow;
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'user-not-found' ||
+              e.code == 'invalid-credential' ||
+              e.code == 'channel-error') {
+            credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+              email: emailInput,
+              password: password,
+            );
+          } else {
+            rethrow;
+          }
         }
       }
 
       await _setUserFromFirebase(credential.user!);
-
-      // Salva/atualiza perfil no Firestore
       await _userService.upsertProfile(
         uid: _uid!,
         email: _email!,
         displayName: _username,
       );
 
-      // Salva sessão local como backup
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
       await prefs.setString('username', _username ?? '');
       await prefs.setString('email', _email ?? '');
 
       notifyListeners();
-      return true;
+      return null; // sucesso
+    } on FirebaseAuthException catch (e) {
+      debugPrint('AuthProvider.login FirebaseAuthException: code=${e.code} msg=${e.message}');
+      return _friendlyError(e.code);
     } catch (e) {
       debugPrint('AuthProvider.login error: $e');
-      return false;
+      return 'Erro inesperado: $e';
+    }
+  }
+
+  String _friendlyError(String code) {
+    switch (code) {
+      case 'email-already-in-use': return 'Este e-mail já está cadastrado. Tente entrar.';
+      case 'user-not-found':       return 'Usuário não encontrado.';
+      case 'wrong-password':       return 'Senha incorreta.';
+      case 'invalid-email':        return 'E-mail inválido.';
+      case 'weak-password':        return 'Senha fraca — use pelo menos 6 caracteres.';
+      case 'operation-not-allowed': return 'Login por e-mail não está ativado no Firebase. Ative em Authentication → Método de login.';
+      case 'too-many-requests':    return 'Muitas tentativas. Aguarde alguns minutos.';
+      case 'network-request-failed': return 'Sem conexão com internet.';
+      default: return 'Erro de autenticação ($code).';
     }
   }
 
