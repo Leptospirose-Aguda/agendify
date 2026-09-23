@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routes/app_routes.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/task_provider.dart';
+import '../../../core/providers/event_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,20 +29,28 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // Captura providers antes do await para evitar uso de contexto após gap assíncrono
+    final taskProvider = Provider.of<TaskProvider>(context, listen: false);
+    final eventProvider = Provider.of<EventProvider>(context, listen: false);
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
     final success = await authProvider.login(
-      _emailController.text.trim(), 
+      _emailController.text.trim(),
       _passwordController.text.trim(),
     );
-    
+
     if (!mounted) return;
-    
+
     setState(() => _isLoading = false);
-    
+
     if (success) {
-      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+      await taskProvider.loadTasks();
+      await eventProvider.loadEvents();
+      navigator.pushReplacementNamed(AppRoutes.home);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Credenciais inválidas. Digite qualquer e-mail e senha.')),
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Credenciais inválidas. Verifique seu e-mail e senha.')),
       );
     }
   }

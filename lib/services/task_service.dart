@@ -1,72 +1,56 @@
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/task_model.dart';
 
 class TaskService {
-  static const String _key = 'tasks_v1';
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// Retorna a subcoleção do usuário logado: users/{uid}/tasks
+  CollectionReference<Map<String, dynamic>> _userTasks() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw Exception('Usuário não autenticado');
+    return _firestore.collection('users').doc(uid).collection('tasks');
+  }
 
   Future<List<TaskModel>> getTasks() async {
     try {
-      final snapshot = await _firestore.collection('tasks').get();
-      if (snapshot.docs.isNotEmpty) {
-        return snapshot.docs.map((doc) => TaskModel.fromJson(doc.data())).toList();
-      }
+      final snapshot = await _userTasks().orderBy('createdAt', descending: true).get();
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return TaskModel.fromJson(data);
+      }).toList();
     } catch (e) {
-      debugPrint('Firestore getTasks info: $e');
+      debugPrint('TaskService.getTasks error: $e');
+      return [];
     }
-
-    final prefs = await SharedPreferences.getInstance();
-    final String? data = prefs.getString(_key);
-    if (data == null) return [];
-    
-    final List<dynamic> jsonList = jsonDecode(data);
-    return jsonList.map((e) => TaskModel.fromJson(e as Map<String, dynamic>)).toList();
-  }
-
-  Future<void> saveTasksLocally(List<TaskModel> tasks) async {
-    final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(tasks.map((e) => e.toJson()).toList());
-    await prefs.setString(_key, data);
   }
 
   Future<void> createTask(TaskModel task) async {
     try {
-      await _firestore.collection('tasks').doc(task.id).set(task.toJson());
+      await _userTasks().doc(task.id).set(task.toJson());
     } catch (e) {
-      debugPrint('Firestore createTask info: $e');
-    }
-    final tasks = await getTasks();
-    if (!tasks.any((t) => t.id == task.id)) {
-      tasks.add(task);
-      await saveTasksLocally(tasks);
+      debugPrint('TaskService.createTask error: $e');
+      rethrow;
     }
   }
 
   Future<void> updateTask(TaskModel task) async {
     try {
-      await _firestore.collection('tasks').doc(task.id).set(task.toJson(), SetOptions(merge: true));
+      await _userTasks().doc(task.id).set(task.toJson(), SetOptions(merge: true));
     } catch (e) {
-      debugPrint('Firestore updateTask info: $e');
-    }
-    final tasks = await getTasks();
-    final index = tasks.indexWhere((t) => t.id == task.id);
-    if (index != -1) {
-      tasks[index] = task;
-      await saveTasksLocally(tasks);
+      debugPrint('TaskService.updateTask error: $e');
+      rethrow;
     }
   }
 
   Future<void> deleteTask(String taskId) async {
     try {
-      await _firestore.collection('tasks').doc(taskId).delete();
+      await _userTasks().doc(taskId).delete();
     } catch (e) {
-      debugPrint('Firestore deleteTask info: $e');
+      debugPrint('TaskService.deleteTask error: $e');
+      rethrow;
     }
-    final tasks = await getTasks();
-    tasks.removeWhere((t) => t.id == taskId);
-    await saveTasksLocally(tasks);
   }
 }
