@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/providers/event_provider.dart';
+import '../../../core/providers/category_provider.dart';
 import '../../../models/event_model.dart';
 
 class EventFormScreen extends StatefulWidget {
@@ -22,6 +23,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
   TimeOfDay _startTime = TimeOfDay.now();
   TimeOfDay _endTime = TimeOfDay.now();
   bool _recurring = false;
+  String? _selectedCategoryName;
 
   @override
   void initState() {
@@ -44,10 +46,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
       lastDate: DateTime(2035),
       initialDate: _date,
     );
-
-    if (selected != null) {
-      setState(() => _date = selected);
-    }
+    if (selected != null) setState(() => _date = selected);
   }
 
   Future<void> _pickStartTime() async {
@@ -55,11 +54,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
       context: context,
       initialTime: _startTime,
     );
-
     if (selected != null) {
       setState(() {
         _startTime = selected;
-        // Auto-adjust end time if it's before start time or just to keep 1h duration
         _endTime = TimeOfDay(hour: (_startTime.hour + 1) % 24, minute: _startTime.minute);
       });
     }
@@ -70,10 +67,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
       context: context,
       initialTime: _endTime,
     );
-
-    if (selected != null) {
-      setState(() => _endTime = selected);
-    }
+    if (selected != null) setState(() => _endTime = selected);
   }
 
   void _save() {
@@ -85,9 +79,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
     var endDateTime = DateTime(
       _date.year, _date.month, _date.day, _endTime.hour, _endTime.minute,
     );
-
     if (endDateTime.isBefore(startDateTime)) {
-      // If end time is before start time, assume it's the next day
       endDateTime = endDateTime.add(const Duration(days: 1));
     }
 
@@ -96,9 +88,14 @@ class _EventFormScreenState extends State<EventFormScreen> {
       title: _titleController.text.trim(),
       start: startDateTime,
       end: endDateTime,
-      location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-      notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+      location: _locationController.text.trim().isEmpty
+          ? null
+          : _locationController.text.trim(),
+      notes: _notesController.text.trim().isEmpty
+          ? null
+          : _notesController.text.trim(),
       isRecurring: _recurring,
+      category: _selectedCategoryName,
     );
 
     Provider.of<EventProvider>(context, listen: false).addEvent(event);
@@ -111,29 +108,28 @@ class _EventFormScreenState extends State<EventFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final categories = context.watch<CategoryProvider>().categories;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Novo evento'),
-      ),
+      appBar: AppBar(title: const Text('Novo evento')),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            // Título
             TextFormField(
               controller: _titleController,
               decoration: const InputDecoration(
-                labelText: 'Título',
+                labelText: 'Título *',
                 prefixIcon: Icon(Icons.title),
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Informe o título do evento.';
-                }
-                return null;
-              },
+              validator: (value) =>
+                  (value == null || value.trim().isEmpty) ? 'Informe o título do evento.' : null,
             ),
             const SizedBox(height: 16),
+
+            // Data
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.calendar_today),
@@ -146,6 +142,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
               trailing: const Icon(Icons.edit_calendar),
               onTap: _pickDate,
             ),
+
+            // Horários
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.schedule),
@@ -161,6 +159,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
               onTap: _pickEndTime,
             ),
             const SizedBox(height: 8),
+
+            // Localização
             TextField(
               controller: _locationController,
               decoration: const InputDecoration(
@@ -169,6 +169,45 @@ class _EventFormScreenState extends State<EventFormScreen> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // Categoria
+            DropdownButtonFormField<String>(
+              initialValue: _selectedCategoryName,
+              decoration: const InputDecoration(
+                labelText: 'Categoria',
+                prefixIcon: Icon(Icons.label_outline),
+              ),
+              hint: const Text('Selecionar categoria'),
+              items: [
+                const DropdownMenuItem<String>(
+                  value: null,
+                  child: Text('Sem categoria'),
+                ),
+                ...categories.map(
+                  (cat) => DropdownMenuItem<String>(
+                    value: cat.name,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: cat.color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        Text(cat.name),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              onChanged: (value) => setState(() => _selectedCategoryName = value),
+            ),
+            const SizedBox(height: 16),
+
+            // Observações
             TextField(
               controller: _notesController,
               maxLines: 4,
@@ -179,16 +218,17 @@ class _EventFormScreenState extends State<EventFormScreen> {
               ),
             ),
             const SizedBox(height: 8),
+
+            // Recorrente
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: _recurring,
               onChanged: (value) => setState(() => _recurring = value),
               title: const Text('Evento recorrente'),
-              subtitle: const Text(
-                'Preparado para recorrência diária, semanal ou mensal.',
-              ),
+              subtitle: const Text('Preparado para recorrência diária, semanal ou mensal.'),
             ),
             const SizedBox(height: 24),
+
             FilledButton.icon(
               onPressed: _save,
               icon: const Icon(Icons.save),
