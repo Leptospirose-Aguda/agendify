@@ -1,6 +1,10 @@
 # 03 — Planejamento
 
+[← Arquitetura](02-arquitetura.md) · **Planejamento** · [README ↑](../README.md)
+
 ## 1. Cronograma do Projeto
+
+As tarefas restantes usam `after`: cada uma começa quando a anterior termina, então um atraso empurra as seguintes. As datas futuras são estimativas e devem ser ajustadas ao calendário da disciplina.
 
 ```mermaid
 gantt
@@ -26,10 +30,16 @@ gantt
     docs/ (visão, arquitetura, plano)     :done,    d2, after d1,   1d
 
     section Entrega e Testes
-    Build Web e deploy Netlify            :active,  e1, 2026-09-23, 2d
-    Testes em equipe (QA)                 :         e2, after e1,   3d
-    Correções de bugs pós-QA              :         e3, after e2,   2d
-    Geração APK Android                   :         e4, after e3,   1d
+    Build Web e deploy                    :active,  e1, 2026-09-23, 2d
+    Entrega 1 - documentação inicial      :milestone, ent1, 2026-10-01, 0d
+    Testes em equipe (QA)                 :         e2, after ent1, 5d
+    Correções de bugs pós-QA              :         e3, after e2,   5d
+    Geração APK Android                   :         e4, after e3,   2d
+
+    section Avaliação
+    Laboratório de Avaliação entre grupos :         av, after e4,   7d
+    Ajustes pós-avaliação                 :         aj, after av,   5d
+    Apresentação final                    :milestone, fim, after aj, 0d
 ```
 
 ---
@@ -77,6 +87,9 @@ gitGraph
 | `fix/<nome>`       | Correção de bug. Ex: `fix/logo-quebrada-netlify`                   |
 | `docs/<nome>`      | Atualização de documentação pura.                                  |
 | `release/<versao>` | Preparação de release. Ex: `release/v1.0.0`                        |
+
+
+**Ciclo de vida de uma branch:** ela **nasce** a partir da `main` atualizada (`git checkout main && git pull && git checkout -b feature/nome`), recebe commits de uma única funcionalidade, é enviada ao GitHub e vira um **Pull Request** para a `main`. Depois de revisada por pelo menos um colega e mergeada, ela **morre**: é apagada no GitHub (botão *Delete branch* do PR) e na máquina local (`git branch -d feature/nome`). Ninguém commita direto na `main`.
 
 ---
 
@@ -136,3 +149,13 @@ Uma tarefa só está **concluída** quando **todos** os itens abaixo estão marc
 - [ ] O `CONTEXTO.md` foi atualizado se houve mudança de arquitetura, dependência ou comando.
 - [ ] O commit segue a convenção **Conventional Commits**.
 - [ ] O Pull Request foi revisado por pelo menos **1 membro da equipe** antes do merge em `main`.
+
+---
+
+## 5. Licença
+
+O projeto usa a **licença MIT** (arquivo [LICENSE](../LICENSE) na raiz).
+
+**Por que MIT:** é a licença permissiva mais simples e conhecida. Permite que qualquer pessoa use, estude, altere e reaproveite o código, inclusive colegas de outras turmas, exigindo apenas que o aviso de copyright e o texto da licença sigam junto. Isso combina com um trabalho acadêmico que serve de exemplo e de base para evolução, e é compatível com as licenças das bibliotecas usadas (Flutter e FlutterFire usam BSD-3-Clause, também permissiva).
+
+**Por que não as outras:** a Apache 2.0 acrescenta concessão de patente e a obrigação de declarar arquivos alterados, desnecessárias para o porte do projeto. A GPL obrigaria quem redistribuir uma versão modificada a abrir o código sob a mesma licença, o que restringe o reaproveitamento. Sem licença, o repositório seria público mas com todos os direitos reservados, impedindo legalmente qualquer reuso.
