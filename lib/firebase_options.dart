@@ -1,4 +1,4 @@
-// File generated manually for Agendify Flutter Web using Firebase project agendify-ae460.
+// File generated for Agendify Flutter - Firebase project agendify-ae460.
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
@@ -19,8 +19,7 @@ class DefaultFirebaseOptions {
         return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for linux - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
+          'DefaultFirebaseOptions have not been configured for linux.',
         );
       default:
         throw UnsupportedError(
@@ -38,7 +37,14 @@ class DefaultFirebaseOptions {
     storageBucket: 'agendify-ae460.firebasestorage.app',
   );
 
-  static const FirebaseOptions android = web;
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyBDlk-qxj2tL04bVpEKzRGO6gnKk3BUgHA',
+    appId: '1:62486214684:android:7bfd7ffa9d6f680534c7d9',
+    messagingSenderId: '62486214684',
+    projectId: 'agendify-ae460',
+    storageBucket: 'agendify-ae460.firebasestorage.app',
+  );
+
   static const FirebaseOptions ios = web;
   static const FirebaseOptions macos = web;
   static const FirebaseOptions windows = web;
