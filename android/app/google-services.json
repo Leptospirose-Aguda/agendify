@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "62486214684",
+    "firebase_url": "https://agendify-ae460-default-rtdb.firebaseio.com",
+    "project_id": "agendify-ae460",
+    "storage_bucket": "agendify-ae460.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:62486214684:android:7bfd7ffa9d6f680534c7d9",
+        "android_client_info": {
+          "package_name": "com.example.agendify"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDlk-qxj2tL04bVpEKzRGO6gnKk3BUgHA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
