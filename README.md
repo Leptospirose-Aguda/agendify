@@ -156,6 +156,7 @@ Fluxo de trabalho (GitHub Flow), detalhado em [docs/03-planejamento.md](docs/03-
 - Bruno Moura Mathias Fernandes Simão ([@brunomouramathias](https://github.com/brunomouramathias))
 - Gabriel Tadeu Costa Sanmartin ([@GTCSanmar](https://github.com/GTCSanmar))
 - Luna Ribeiro Alves dos Santos ([@LunaRibeiro](https://github.com/LunaRibeiro))
+- Paulo Ricardo Vicentim Moreira
 - Rafael Tomkowski ([@Rafael-Tomkowski ](https://github.com/Rafael-Tomkowski))
 - Rocque dos Reis Pennafort ([@Rocque-Pennafort](https://github.com/Rocque-Pennafort))
 
