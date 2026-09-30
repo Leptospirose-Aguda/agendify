@@ -88,6 +88,9 @@ gitGraph
 | `docs/<nome>`      | Atualização de documentação pura.                                  |
 | `release/<versao>` | Preparação de release. Ex: `release/v1.0.0`                        |
 
+
+**Ciclo de vida de uma branch:** ela **nasce** a partir da `main` atualizada (`git checkout main && git pull && git checkout -b feature/nome`), recebe commits de uma única funcionalidade, é enviada ao GitHub e vira um **Pull Request** para a `main`. Depois de revisada por pelo menos um colega e mergeada, ela **morre**: é apagada no GitHub (botão *Delete branch* do PR) e na máquina local (`git branch -d feature/nome`). Ninguém commita direto na `main`.
+
 ---
 
 ## 3. Convenção de Mensagens de Commit
