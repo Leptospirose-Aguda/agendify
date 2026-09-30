@@ -32,32 +32,32 @@
 - Google Chrome instalado (para rodar na Web)
 - Conta no Firebase Console (projeto agendify-ae460 ja criado)
 
-`ash
+` bash
 flutter doctor
 `
 
 ### 2. Clonar o Repositorio
 
-`ash
+` bash
 git clone https://github.com/Leptospirose-Aguda/agendify.git
 cd agendify
 `
 
 ### 3. Instalar Dependencias
 
-`ash
+` bash
 flutter pub get
 `
 
 ### 4. Rodar no Navegador (Web)
 
-`ash
+` bash
 flutter run -d chrome --web-port 8080
 `
 
 ### 5. Deploy no Firebase Hosting
 
-`ash
+` bash
 flutter build web --release
 firebase deploy --only hosting --project agendify-ae460
 `
@@ -66,7 +66,7 @@ App disponivel em: https://agendify-ae460.web.app
 
 ### 6. Gerar APK para Android
 
-`ash
+` bash
 flutter build apk
 `
 
@@ -122,8 +122,8 @@ agendify/
 Fluxo de trabalho (GitHub Flow):
 
 1. Crie uma branch: git checkout -b feature/nome
-2. Faca commits: feat: descricao da mudanca
-3. Abra um Pull Request no GitHub
+2. Faca commits com mensagens claras: feat: descricao da mudanca
+3. Abra um Pull Request no GitHub para revisao
 4. Apos aprovacao, merge em main
 
 ---
