@@ -6,10 +6,29 @@
 
 ## Capturas de tela
 
-<!-- Substituir pelas capturas reais, salvas em assets/screenshots/ -->
-| Login | Dashboard | Agenda | Tarefas |
-|:---:|:---:|:---:|:---:|
-| ![Login](assets/screenshots/login.png) | ![Dashboard](assets/screenshots/dashboard.png) | ![Agenda](assets/screenshots/agenda.png) | ![Tarefas](assets/screenshots/tarefas.png) |
+**Primeiro acesso**
+
+| Login | Início (sem dados) | Agenda (sem eventos) |
+|:---:|:---:|:---:|
+| <img src="assets/screenshots/login.jpg" alt="Tela de login" width="190"> | <img src="assets/screenshots/dashboard-vazio.jpg" alt="Dashboard sem eventos e tarefas" width="190"> | <img src="assets/screenshots/agenda-vazia.jpg" alt="Calendário sem eventos" width="190"> |
+
+**Criando um evento**
+
+| Novo evento | Início com o evento | Agenda com o evento |
+|:---:|:---:|:---:|
+| <img src="assets/screenshots/novo-evento.jpg" alt="Formulário de novo evento" width="190"> | <img src="assets/screenshots/dashboard.jpg" alt="Dashboard com o evento criado" width="190"> | <img src="assets/screenshots/agenda.jpg" alt="Calendário com o evento marcado" width="190"> |
+
+**Tarefas**
+
+| Adicionando tarefa | Tarefas pendentes |
+|:---:|:---:|
+| <img src="assets/screenshots/nova-tarefa.jpg" alt="Campo de nova tarefa sendo preenchido" width="190"> | <img src="assets/screenshots/tarefas.jpg" alt="Lista de tarefas pendentes" width="190"> |
+
+**Conta e preferências**
+
+| Perfil | Configurações |
+|:---:|:---:|
+| <img src="assets/screenshots/perfil.jpg" alt="Perfil do usuário" width="190"> | <img src="assets/screenshots/configuracoes.jpg" alt="Configurações de aparência" width="190"> |
 
 Versão publicada: https://agendify-ae460.web.app
 
@@ -31,6 +50,8 @@ As versões são as restrições declaradas no `pubspec.yaml` (`^` = aquela vers
 | shared_preferences  | `^2.2.3`            | Sessão de login salva no dispositivo |
 | intl                | `^0.19.0`           | Formatação de datas (prevista)       |
 | uuid                | `^4.4.0`            | Geração de IDs únicos                |
+
+**Navegação:** `Navigator` do próprio Flutter, com rotas nomeadas em `lib/core/routes/app_routes.dart` e abas na `HomeScreen` (sem biblioteca externa). **Estado:** `provider`. **Armazenamento:** Cloud Firestore na nuvem e `shared_preferences` no dispositivo.
 
 O papel de cada biblioteca na arquitetura está detalhado em [docs/02-arquitetura.md](docs/02-arquitetura.md#6-papel-das-bibliotecas).
 
@@ -153,13 +174,9 @@ Fluxo de trabalho (GitHub Flow), detalhado em [docs/03-planejamento.md](docs/03-
 ## Autores
 
 <!-- Completar com todos os integrantes do grupo -->
-- Bruno Moura Mathias Fernandes Simão ([@brunomouramathias](https://github.com/brunomouramathias))
-- Gabriel Tadeu Costa Sanmartin ([@GTCSanmar](https://github.com/GTCSanmar))
-- Luna Ribeiro Alves dos Santos ([@LunaRibeiro](https://github.com/LunaRibeiro))
-- Paulo Ricardo Vicentim Moreira
-- Rafael Tomkowski ([@Rafael-Tomkowski ](https://github.com/Rafael-Tomkowski))
-- Rocque dos Reis Pennafort ([@Rocque-Pennafort](https://github.com/Rocque-Pennafort))
-
+- Bruno Simão
+- Nome Sobrenome ([@usuario](https://github.com/usuario))
+- Nome Sobrenome ([@usuario](https://github.com/usuario))
 
 COM1045 · UTFPR Medianeira · Ciência da Computação
 
