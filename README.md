@@ -174,9 +174,12 @@ Fluxo de trabalho (GitHub Flow), detalhado em [docs/03-planejamento.md](docs/03-
 ## Autores
 
 <!-- Completar com todos os integrantes do grupo -->
-- Bruno Simão
-- Nome Sobrenome ([@usuario](https://github.com/usuario))
-- Nome Sobrenome ([@usuario](https://github.com/usuario))
+- Bruno Moura
+- Gabriel Tadeu
+- Luna Ribeiro
+- Paulo Ricardo
+- Rafael Tomkowski
+- Rocque dos Reis
 
 COM1045 · UTFPR Medianeira · Ciência da Computação
 
