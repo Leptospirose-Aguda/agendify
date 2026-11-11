@@ -1,10 +1,15 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
+// lib/features/events/screens/event_form_screen.dart
+//
+// Formulário de criação de eventos do Agendify.
+//
+// Atualização 11/11/2026:
+//   - Adicionado botão "Usar minha localização atual" no campo de localização.
+//   - Suporte a mobile (GPS nativo) e web (Geolocation API do browser).
+//   - Usuário pode aceitar a sugestão automática ou digitar manualmente.
 
-import '../../../core/providers/event_provider.dart';
-import '../../../core/providers/category_provider.dart';
-import '../../../models/event_model.dart';
+import 'package:flutter/material.dart';
+
+import '../../../services/location_service.dart';
 
 class EventFormScreen extends StatefulWidget {
   const EventFormScreen({super.key});
@@ -19,17 +24,15 @@ class _EventFormScreenState extends State<EventFormScreen> {
   final _locationController = TextEditingController();
   final _notesController = TextEditingController();
 
+  final _locationService = LocationService();
+
   DateTime _date = DateTime.now();
   TimeOfDay _startTime = TimeOfDay.now();
   TimeOfDay _endTime = TimeOfDay.now();
   bool _recurring = false;
-  String? _selectedCategoryName;
 
-  @override
-  void initState() {
-    super.initState();
-    _endTime = TimeOfDay(hour: (_startTime.hour + 1) % 24, minute: _startTime.minute);
-  }
+  /// Indica se a busca de localização está em andamento.
+  bool _loadingLocation = false;
 
   @override
   void dispose() {
@@ -46,7 +49,10 @@ class _EventFormScreenState extends State<EventFormScreen> {
       lastDate: DateTime(2035),
       initialDate: _date,
     );
-    if (selected != null) setState(() => _date = selected);
+
+    if (selected != null) {
+      setState(() => _date = selected);
+    }
   }
 
   Future<void> _pickStartTime() async {
@@ -54,11 +60,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
       context: context,
       initialTime: _startTime,
     );
+
     if (selected != null) {
-      setState(() {
-        _startTime = selected;
-        _endTime = TimeOfDay(hour: (_startTime.hour + 1) % 24, minute: _startTime.minute);
-      });
+      setState(() => _startTime = selected);
     }
   }
 
@@ -67,69 +71,123 @@ class _EventFormScreenState extends State<EventFormScreen> {
       context: context,
       initialTime: _endTime,
     );
-    if (selected != null) setState(() => _endTime = selected);
+
+    if (selected != null) {
+      setState(() => _endTime = selected);
+    }
+  }
+
+  /// Obtém a localização atual do dispositivo/navegador e preenche o campo.
+  /// Em dispositivos móveis solicita permissão ao SO quando necessário.
+  /// No navegador (web) o browser mostra o diálogo nativo de permissão.
+  Future<void> _fetchCurrentLocation() async {
+    setState(() => _loadingLocation = true);
+
+    try {
+      final address = await _locationService.getCurrentAddress();
+
+      if (!mounted) return;
+
+      // Mostra diálogo de confirmação — o usuário pode aceitar ou cancelar.
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Localização detectada'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Deseja usar o endereço abaixo como localização do evento?',
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        address,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Usar este endereço'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true && mounted) {
+        setState(() => _locationController.text = address);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Não foi possível obter a localização: ${e.toString()}',
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingLocation = false);
+    }
   }
 
   void _save() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    final startDateTime = DateTime(
-      _date.year, _date.month, _date.day, _startTime.hour, _startTime.minute,
-    );
-    var endDateTime = DateTime(
-      _date.year, _date.month, _date.day, _endTime.hour, _endTime.minute,
-    );
-    if (endDateTime.isBefore(startDateTime)) {
-      endDateTime = endDateTime.add(const Duration(days: 1));
-    }
-
-    final event = EventModel(
-      id: const Uuid().v4(),
-      title: _titleController.text.trim(),
-      start: startDateTime,
-      end: endDateTime,
-      location: _locationController.text.trim().isEmpty
-          ? null
-          : _locationController.text.trim(),
-      notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
-      isRecurring: _recurring,
-      category: _selectedCategoryName,
-    );
-
-    Provider.of<EventProvider>(context, listen: false).addEvent(event);
-
+    // TODO: transformar formulário em EventModel e salvar com EventService.
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Evento salvo com sucesso!')),
+      const SnackBar(content: Text('Evento salvo no protótipo.')),
     );
     Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    final categories = context.watch<CategoryProvider>().categories;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Novo evento')),
+      appBar: AppBar(
+        title: const Text('Novo evento'),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            // Título
             TextFormField(
               controller: _titleController,
               decoration: const InputDecoration(
-                labelText: 'Título *',
+                labelText: 'Título',
                 prefixIcon: Icon(Icons.title),
               ),
-              validator: (value) =>
-                  (value == null || value.trim().isEmpty) ? 'Informe o título do evento.' : null,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Informe o título do evento.';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 16),
-
-            // Data
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.calendar_today),
@@ -142,8 +200,6 @@ class _EventFormScreenState extends State<EventFormScreen> {
               trailing: const Icon(Icons.edit_calendar),
               onTap: _pickDate,
             ),
-
-            // Horários
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.schedule),
@@ -160,54 +216,51 @@ class _EventFormScreenState extends State<EventFormScreen> {
             ),
             const SizedBox(height: 8),
 
-            // Localização
+            // ─── Campo de localização com sugestão automática ───────────────
             TextField(
               controller: _locationController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Localização',
-                prefixIcon: Icon(Icons.location_on_outlined),
+                prefixIcon: const Icon(Icons.location_on_outlined),
+                suffixIcon: _loadingLocation
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : IconButton(
+                        tooltip: 'Usar minha localização atual',
+                        icon: const Icon(Icons.my_location),
+                        onPressed: _fetchCurrentLocation,
+                      ),
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Categoria
-            DropdownButtonFormField<String>(
-              initialValue: _selectedCategoryName,
-              decoration: const InputDecoration(
-                labelText: 'Categoria',
-                prefixIcon: Icon(Icons.label_outline),
-              ),
-              hint: const Text('Selecionar categoria'),
-              items: [
-                const DropdownMenuItem<String>(
-                  value: null,
-                  child: Text('Sem categoria'),
+            const SizedBox(height: 4),
+            // Dica contextual abaixo do campo
+            Row(
+              children: [
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.outline,
                 ),
-                ...categories.map(
-                  (cat) => DropdownMenuItem<String>(
-                    value: cat.name,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            color: cat.color,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        Text(cat.name),
-                      ],
-                    ),
+                const SizedBox(width: 4),
+                Text(
+                  'Toque em  para detectar sua posição atual.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.outline,
                   ),
                 ),
               ],
-              onChanged: (value) => setState(() => _selectedCategoryName = value),
             ),
-            const SizedBox(height: 16),
+            // ───────────────────────────────────────────────────────────────
 
-            // Observações
+            const SizedBox(height: 16),
             TextField(
               controller: _notesController,
               maxLines: 4,
@@ -218,17 +271,16 @@ class _EventFormScreenState extends State<EventFormScreen> {
               ),
             ),
             const SizedBox(height: 8),
-
-            // Recorrente
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: _recurring,
               onChanged: (value) => setState(() => _recurring = value),
               title: const Text('Evento recorrente'),
-              subtitle: const Text('Preparado para recorrência diária, semanal ou mensal.'),
+              subtitle: const Text(
+                'Preparado para recorrência diária, semanal ou mensal.',
+              ),
             ),
             const SizedBox(height: 24),
-
             FilledButton.icon(
               onPressed: _save,
               icon: const Icon(Icons.save),

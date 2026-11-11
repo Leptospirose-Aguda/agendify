@@ -11,14 +11,30 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  provider: ^6.1.2
-  shared_preferences: ^2.2.3
-  intl: ^0.19.0
-  uuid: ^4.4.0
-  table_calendar: ^3.1.2
+
+  # Firebase
   firebase_core: ^4.15.0
   firebase_auth: ^6.7.0
   cloud_firestore: ^6.10.0
+
+  # Estado e preferências
+  provider: ^6.1.5
+  shared_preferences: ^2.5.5
+
+  # Calendário
+  table_calendar: ^3.1.3
+
+  # Internacionalização
+  intl: ^0.19.0
+
+  # Identificadores únicos
+  uuid: ^4.6.0
+
+  # ── Geolocalização (novo — Relatório 11/11) ──────────────────────────────
+  # Suporte a mobile (Android/iOS) e web (Geolocation API do browser).
+  geolocator: ^13.0.2
+  # Geocodificação reversa (coordenadas → endereço legível).
+  geocoding: ^3.0.0
 
 dev_dependencies:
   flutter_test:
