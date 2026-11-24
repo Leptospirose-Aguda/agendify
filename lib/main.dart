@@ -1,3 +1,4 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -11,9 +12,14 @@ import 'core/providers/category_provider.dart';
 import 'services/event_service.dart';
 import 'services/task_service.dart';
 import 'services/category_service.dart';
+import 'services/connectivity_service.dart';
+import 'services/offline_cache_service.dart';
+import 'services/sync_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializa Firebase
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -22,13 +28,33 @@ Future<void> main() async {
     debugPrint('Firebase init error: $e');
   }
 
+  // Serviços compartilhados
+  final connectivity = ConnectivityService();
+  final cache = OfflineCacheService();
+  final eventService = EventService(connectivity: connectivity, cache: cache);
+  final taskService = TaskService(connectivity: connectivity, cache: cache);
+
+  // SyncService: escuta reconexão e sincroniza automaticamente
+  final syncService = SyncService(
+    connectivity: connectivity,
+    eventService: eventService,
+    taskService: taskService,
+  );
+
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider.value(value: connectivity),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => EventProvider(EventService())),
-        ChangeNotifierProvider(create: (_) => TaskProvider(TaskService())),
+        ChangeNotifierProvider(
+          create: (_) => EventProvider(eventService, connectivity),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => TaskProvider(taskService, connectivity),
+        ),
         ChangeNotifierProvider(create: (_) => CategoryProvider(CategoryService())),
+        // Mantém o SyncService vivo durante todo o ciclo da app
+        Provider.value(value: syncService),
       ],
       child: const AgendifyApp(),
     ),

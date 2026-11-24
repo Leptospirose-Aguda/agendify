@@ -30,11 +30,14 @@ dependencies:
   # Identificadores únicos
   uuid: ^4.6.0
 
-  # ── Geolocalização (novo — Relatório 11/11) ──────────────────────────────
-  # Suporte a mobile (Android/iOS) e web (Geolocation API do browser).
+  # ── Geolocalização (Relatório 11/11) ─────────────────────────────────────
   geolocator: ^13.0.2
-  # Geocodificação reversa (coordenadas → endereço legível).
   geocoding: ^3.0.0
+
+  # ── Offline cache (Relatório 24/11) ──────────────────────────────────────
+  sqflite: ^2.3.3
+  # Verificar conectividade para decidir local vs. Firebase
+  connectivity_plus: ^6.1.4
 
 dev_dependencies:
   flutter_test:
