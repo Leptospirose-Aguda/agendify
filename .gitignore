@@ -12,6 +12,7 @@ pubspec.lock
 
 # Platform build files
 android/.gradle/
+android/*.log
 ios/Pods/
 
 # Variáveis de ambiente — NUNCA versionar o .env com chaves reais

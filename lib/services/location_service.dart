@@ -94,3 +94,4 @@ class LocationService {
     return getAddressFromPosition(position);
   }
 }
+
