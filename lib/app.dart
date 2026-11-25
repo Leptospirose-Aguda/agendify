@@ -33,10 +33,7 @@ class _AgendifyAppState extends State<AgendifyApp> {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: _themeMode,
-      home: AuthGate(
-        setThemeMode: setThemeMode,
-        currentThemeMode: _themeMode,
-      ),
+      initialRoute: AppRoutes.root,
       onGenerateRoute: (settings) => AppRoutes.onGenerateRoute(
         settings,
         setThemeMode: setThemeMode,
@@ -63,15 +60,15 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   bool _dataLoaded = false;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final auth = Provider.of<AuthProvider>(context);
-    if (auth.isLoggedIn && !_dataLoaded) {
+  void _triggerInitialDataLoad() {
+    if (!_dataLoaded) {
       _dataLoaded = true;
-      Provider.of<TaskProvider>(context, listen: false).loadTasks();
-      Provider.of<EventProvider>(context, listen: false).loadEvents();
-      Provider.of<CategoryProvider>(context, listen: false).loadCategories();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Provider.of<TaskProvider>(context, listen: false).loadTasks();
+        Provider.of<EventProvider>(context, listen: false).loadEvents();
+        Provider.of<CategoryProvider>(context, listen: false).loadCategories();
+      });
     }
   }
 
@@ -79,23 +76,40 @@ class _AuthGateState extends State<AuthGate> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
 
-    // Aguarda checagem de sessão salva localmente
+    // Enquanto carrega a verificação da sessão local
     if (!auth.initialized) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/images/agendify_logo.png',
+                height: 80,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.calendar_month,
+                  size: 80,
+                  color: Color(0xFF185286),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const CircularProgressIndicator(),
+            ],
+          ),
         ),
       );
     }
 
-    // Se já estiver logado (online ou sessão offline restaurada), entra direto na Home!
+    // Se já está logado (sessão online ou offline restaurada), entra direto na Home!
     if (auth.isLoggedIn) {
+      _triggerInitialDataLoad();
       return HomeScreen(
         onThemeChanged: widget.setThemeMode,
         currentThemeMode: widget.currentThemeMode,
       );
     }
 
+    // Se deslogado, vai para a tela de login
     return const LoginScreen();
   }
 }

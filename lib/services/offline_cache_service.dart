@@ -2,11 +2,6 @@
 //
 // Cache local com sqflite — garante funcionamento offline do Agendify.
 // Implementado em: 24/11/2026 — Relatório Semanal #08
-//
-// Estratégia:
-//   • Eventos e tarefas são gravados no SQLite local imediatamente.
-//   • Uma coluna `synced` (0/1) rastreia o que ainda não foi para o Firebase.
-//   • Ao recuperar conexão, o EventSyncService envia os itens pendentes.
 
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
@@ -16,10 +11,21 @@ class OfflineCacheService {
   static const _version = 1;
 
   Database? _db;
+  bool _useInMemoryFallback = false;
+  final Map<String, Map<String, dynamic>> _inMemoryEvents = {};
+  final Map<String, Map<String, dynamic>> _inMemoryTasks = {};
 
-  Future<Database> get db async {
-    _db ??= await _openDatabase();
-    return _db!;
+  Future<Database?> get db async {
+    if (_useInMemoryFallback) return null;
+    if (_db != null) return _db;
+    try {
+      _db = await _openDatabase();
+      return _db;
+    } catch (e) {
+      debugPrint('OfflineCacheService SQLite initialization fallback: $e');
+      _useInMemoryFallback = true;
+      return null;
+    }
   }
 
   Future<Database> _openDatabase() async {
@@ -64,13 +70,19 @@ class OfflineCacheService {
 
   // ─── EVENTS ───────────────────────────────────────────────────────────────
 
-  /// Insere ou atualiza um evento localmente.
-  /// [synced] = false quando criado offline; = true quando vindo do Firebase.
   Future<void> upsertEvent(Map<String, dynamic> event, {bool synced = false}) async {
-    final d = await db;
     final row = Map<String, dynamic>.from(event);
     row['synced'] = synced ? 1 : 0;
+    if (row['isRecurring'] is bool) {
+      row['isRecurring'] = (row['isRecurring'] as bool) ? 1 : 0;
+    }
     row.remove('deletedAt');
+
+    final d = await db;
+    if (d == null) {
+      _inMemoryEvents[row['id'] as String] = row;
+      return;
+    }
     await d.insert(
       'events',
       row,
@@ -78,27 +90,48 @@ class OfflineCacheService {
     );
   }
 
-  /// Retorna todos os eventos locais que ainda não foram sincronizados.
   Future<List<Map<String, dynamic>>> getPendingEvents() async {
     final d = await db;
+    if (d == null) {
+      return _inMemoryEvents.values
+          .where((e) => e['synced'] == 0 && e['deletedAt'] == null)
+          .toList();
+    }
     return d.query('events', where: 'synced = 0 AND deletedAt IS NULL');
   }
 
-  /// Retorna todos os eventos do banco local (incluindo os já sincronizados).
   Future<List<Map<String, dynamic>>> getAllLocalEvents() async {
     final d = await db;
+    if (d == null) {
+      final list = _inMemoryEvents.values
+          .where((e) => e['deletedAt'] == null)
+          .toList();
+      list.sort((a, b) => ((a['start'] as String?) ?? '').compareTo((b['start'] as String?) ?? ''));
+      return list;
+    }
     return d.query('events', where: 'deletedAt IS NULL', orderBy: 'start ASC');
   }
 
-  /// Marca um evento como sincronizado.
   Future<void> markEventSynced(String id) async {
     final d = await db;
+    if (d == null) {
+      if (_inMemoryEvents.containsKey(id)) {
+        _inMemoryEvents[id]!['synced'] = 1;
+      }
+      return;
+    }
     await d.update('events', {'synced': 1}, where: 'id = ?', whereArgs: [id]);
   }
 
-  /// Remove logicamente um evento (soft-delete) para sincronização posterior.
   Future<void> deleteEventLocally(String id, {bool synced = false}) async {
     final d = await db;
+    if (d == null) {
+      if (_inMemoryEvents.containsKey(id)) {
+        _inMemoryEvents[id]!['deletedAt'] = DateTime.now().toIso8601String();
+        _inMemoryEvents[id]!['synced'] = synced ? 1 : 0;
+      }
+      return;
+    }
     await d.update(
       'events',
       {
@@ -110,9 +143,13 @@ class OfflineCacheService {
     );
   }
 
-  /// Retorna deleções pendentes de sincronização.
   Future<List<Map<String, dynamic>>> getPendingDeletedEvents() async {
     final d = await db;
+    if (d == null) {
+      return _inMemoryEvents.values
+          .where((e) => e['synced'] == 0 && e['deletedAt'] != null)
+          .toList();
+    }
     return d.query(
       'events',
       where: 'synced = 0 AND deletedAt IS NOT NULL',
@@ -122,10 +159,18 @@ class OfflineCacheService {
   // ─── TASKS ────────────────────────────────────────────────────────────────
 
   Future<void> upsertTask(Map<String, dynamic> task, {bool synced = false}) async {
-    final d = await db;
     final row = Map<String, dynamic>.from(task);
     row['synced'] = synced ? 1 : 0;
+    if (row['isCompleted'] is bool) {
+      row['isCompleted'] = (row['isCompleted'] as bool) ? 1 : 0;
+    }
     row.remove('deletedAt');
+
+    final d = await db;
+    if (d == null) {
+      _inMemoryTasks[row['id'] as String] = row;
+      return;
+    }
     await d.insert(
       'tasks',
       row,
@@ -135,21 +180,46 @@ class OfflineCacheService {
 
   Future<List<Map<String, dynamic>>> getPendingTasks() async {
     final d = await db;
+    if (d == null) {
+      return _inMemoryTasks.values
+          .where((e) => e['synced'] == 0 && e['deletedAt'] == null)
+          .toList();
+    }
     return d.query('tasks', where: 'synced = 0 AND deletedAt IS NULL');
   }
 
   Future<List<Map<String, dynamic>>> getAllLocalTasks() async {
     final d = await db;
+    if (d == null) {
+      final list = _inMemoryTasks.values
+          .where((e) => e['deletedAt'] == null)
+          .toList();
+      list.sort((a, b) => ((b['createdAt'] as String?) ?? '').compareTo((a['createdAt'] as String?) ?? ''));
+      return list;
+    }
     return d.query('tasks', where: 'deletedAt IS NULL', orderBy: 'createdAt DESC');
   }
 
   Future<void> markTaskSynced(String id) async {
     final d = await db;
+    if (d == null) {
+      if (_inMemoryTasks.containsKey(id)) {
+        _inMemoryTasks[id]!['synced'] = 1;
+      }
+      return;
+    }
     await d.update('tasks', {'synced': 1}, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<void> deleteTaskLocally(String id, {bool synced = false}) async {
     final d = await db;
+    if (d == null) {
+      if (_inMemoryTasks.containsKey(id)) {
+        _inMemoryTasks[id]!['deletedAt'] = DateTime.now().toIso8601String();
+        _inMemoryTasks[id]!['synced'] = synced ? 1 : 0;
+      }
+      return;
+    }
     await d.update(
       'tasks',
       {
@@ -163,6 +233,11 @@ class OfflineCacheService {
 
   Future<List<Map<String, dynamic>>> getPendingDeletedTasks() async {
     final d = await db;
+    if (d == null) {
+      return _inMemoryTasks.values
+          .where((e) => e['synced'] == 0 && e['deletedAt'] != null)
+          .toList();
+    }
     return d.query(
       'tasks',
       where: 'synced = 0 AND deletedAt IS NOT NULL',
@@ -171,19 +246,43 @@ class OfflineCacheService {
 
   // ─── UTILS ────────────────────────────────────────────────────────────────
 
-  /// Popula o cache com dados vindos do Firebase (marcando como synced).
   Future<void> seedFromFirebase({
     required List<Map<String, dynamic>> events,
     required List<Map<String, dynamic>> tasks,
   }) async {
     final d = await db;
+    if (d == null) {
+      for (final e in events) {
+        final row = Map<String, dynamic>.from(e)..['synced'] = 1;
+        if (row['isRecurring'] is bool) {
+          row['isRecurring'] = (row['isRecurring'] as bool) ? 1 : 0;
+        }
+        _inMemoryEvents[row['id'] as String] = row;
+      }
+      for (final t in tasks) {
+        final row = Map<String, dynamic>.from(t)..['synced'] = 1;
+        if (row['isCompleted'] is bool) {
+          row['isCompleted'] = (row['isCompleted'] as bool) ? 1 : 0;
+        }
+        _inMemoryTasks[row['id'] as String] = row;
+      }
+      debugPrint('OfflineCacheService: cache in-memory populado do Firebase.');
+      return;
+    }
+
     final batch = d.batch();
     for (final e in events) {
       final row = Map<String, dynamic>.from(e)..['synced'] = 1;
+      if (row['isRecurring'] is bool) {
+        row['isRecurring'] = (row['isRecurring'] as bool) ? 1 : 0;
+      }
       batch.insert('events', row, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     for (final t in tasks) {
       final row = Map<String, dynamic>.from(t)..['synced'] = 1;
+      if (row['isCompleted'] is bool) {
+        row['isCompleted'] = (row['isCompleted'] as bool) ? 1 : 0;
+      }
       batch.insert('tasks', row, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);

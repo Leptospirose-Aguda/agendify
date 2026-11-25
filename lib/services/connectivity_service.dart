@@ -9,18 +9,28 @@ import 'package:flutter/foundation.dart';
 
 class ConnectivityService extends ChangeNotifier {
   ConnectivityService() {
-    _init();
+    init();
   }
 
-  bool _isOnline = true;
+  bool _isOnline = false;
+  bool _initialized = false;
+
   bool get isOnline => _isOnline;
+  bool get initialized => _initialized;
 
   StreamSubscription<List<ConnectivityResult>>? _sub;
 
-  Future<void> _init() async {
-    final results = await Connectivity().checkConnectivity();
-    _isOnline = _hasConnection(results);
+  Future<void> init() async {
+    try {
+      final results = await Connectivity().checkConnectivity();
+      _isOnline = _hasConnection(results);
+    } catch (e) {
+      _isOnline = false;
+    }
+    _initialized = true;
+    notifyListeners();
 
+    _sub?.cancel();
     _sub = Connectivity().onConnectivityChanged.listen((results) {
       final online = _hasConnection(results);
       if (online != _isOnline) {

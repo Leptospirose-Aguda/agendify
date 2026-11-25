@@ -19,7 +19,7 @@ import 'services/sync_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializa Firebase
+  // Inicializa Firebase com tratamento de erro
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -30,6 +30,8 @@ Future<void> main() async {
 
   // Serviços compartilhados
   final connectivity = ConnectivityService();
+  await connectivity.init(); // Detecta imediatamente se está offline no início
+
   final cache = OfflineCacheService();
   final eventService = EventService(connectivity: connectivity, cache: cache);
   final taskService = TaskService(connectivity: connectivity, cache: cache);
@@ -53,7 +55,6 @@ Future<void> main() async {
           create: (_) => TaskProvider(taskService, connectivity),
         ),
         ChangeNotifierProvider(create: (_) => CategoryProvider(CategoryService())),
-        // Mantém o SyncService vivo durante todo o ciclo da app
         Provider.value(value: syncService),
       ],
       child: const AgendifyApp(),

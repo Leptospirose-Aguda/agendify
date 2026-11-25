@@ -1,5 +1,7 @@
+// lib/core/routes/app_routes.dart
 import 'package:flutter/material.dart';
 
+import '../../app.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/events/screens/event_details_screen.dart';
 import '../../features/events/screens/event_form_screen.dart';
@@ -7,7 +9,8 @@ import '../../features/home/screens/home_screen.dart';
 import '../../models/event_model.dart';
 
 abstract final class AppRoutes {
-  static const login = '/';
+  static const root = '/';
+  static const login = '/login';
   static const home = '/home';
   static const newEvent = '/events/new';
   static const eventDetails = '/events/details';
@@ -18,6 +21,15 @@ abstract final class AppRoutes {
     required ThemeMode currentThemeMode,
   }) {
     switch (settings.name) {
+      case root:
+        return MaterialPageRoute(
+          builder: (_) => AuthGate(
+            setThemeMode: setThemeMode,
+            currentThemeMode: currentThemeMode,
+          ),
+          settings: settings,
+        );
+
       case login:
         return MaterialPageRoute(
           builder: (_) => const LoginScreen(),

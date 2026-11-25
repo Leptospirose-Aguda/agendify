@@ -19,12 +19,22 @@ class TaskService {
 
   final ConnectivityService _connectivity;
   final OfflineCacheService _cache;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore? get _firestore {
+    try {
+      return FirebaseFirestore.instance;
+    } catch (_) {
+      return null;
+    }
+  }
 
   CollectionReference<Map<String, dynamic>>? _userTasks() {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return null;
-    return _firestore.collection('users').doc(uid).collection('tasks');
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return null;
+      return _firestore?.collection('users').doc(uid).collection('tasks');
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<List<TaskModel>> getTasks() async {

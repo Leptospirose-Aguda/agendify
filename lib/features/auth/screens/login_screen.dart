@@ -23,17 +23,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isCreatingAccount = false;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      if (auth.isLoggedIn) {
-        _goToHome();
-      }
-    });
-  }
-
-  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -52,15 +41,13 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
-  Future<void> _goToHome() async {
+  Future<void> _loadInitialData() async {
     final taskProvider = Provider.of<TaskProvider>(context, listen: false);
     final eventProvider = Provider.of<EventProvider>(context, listen: false);
     final categoryProvider = Provider.of<CategoryProvider>(context, listen: false);
     await taskProvider.loadTasks();
     await eventProvider.loadEvents();
     await categoryProvider.loadCategories();
-    if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed(AppRoutes.home);
   }
 
   Future<void> _submit() async {
@@ -84,12 +71,15 @@ class _LoginScreenState extends State<LoginScreen> {
       if (authProvider.isOfflineSession) {
         messenger.showSnackBar(
           const SnackBar(
-            content: Text('Conectado em Modo Offline com credenciais salvas.'),
+            content: Text('Conectado em Modo Offline com sucesso!'),
             backgroundColor: Colors.teal,
+            duration: Duration(seconds: 4),
           ),
         );
       }
-      await _goToHome();
+      await _loadInitialData();
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (_) => false);
     } else {
       messenger.showSnackBar(
         SnackBar(
@@ -110,11 +100,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Entrando no Modo Offline. Seus dados serão sincronizados ao conectar.'),
+        content: Text('Modo Offline ativado. Seus dados serão sincronizados ao conectar.'),
         backgroundColor: Colors.teal,
+        duration: Duration(seconds: 4),
       ),
     );
-    await _goToHome();
+    await _loadInitialData();
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (_) => false);
   }
 
   @override
@@ -141,6 +134,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         'assets/images/agendify_logo.png',
                         height: 100,
                         fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.calendar_month,
+                          size: 80,
+                          color: Color(0xFF185286),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -218,8 +216,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
 
                     const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 8),
+                    const Row(
+                      children: [
+                        Expanded(child: Divider()),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'OU SEM INTERNET',
+                            style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
 
                     // Botão Modo Offline
                     SizedBox(
@@ -227,7 +237,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _isLoading ? null : _enterOfflineMode,
                         icon: const Icon(Icons.cloud_off),
-                        label: const Text('Acessar modo offline'),
+                        label: const Text('Acessar agenda offline'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
                       ),
                     ),
                   ],

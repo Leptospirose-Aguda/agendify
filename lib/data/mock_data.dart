@@ -27,7 +27,7 @@ abstract final class MockData {
       title: 'Finalizar protótipo do Agendify',
       deadline: DateTime.now().add(const Duration(days: 2)),
     ),
-    const TaskModel(
+    TaskModel(
       id: '2',
       title: 'Revisar requisitos do projeto',
     ),

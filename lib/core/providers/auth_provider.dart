@@ -40,15 +40,17 @@ class AuthProvider extends ChangeNotifier {
       debugPrint('FirebaseAuth checkLoginStatus error: $e');
     }
 
-    // Fallback offline: verifica se já havia sessão salva localmente no dispositivo
+    // Fallback offline: restaura sessão salva no SharedPreferences
     try {
       final prefs = await SharedPreferences.getInstance();
-      _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-      _uid = prefs.getString('uid');
-      _username = prefs.getString('username');
-      _email = prefs.getString('email');
-      if (_isLoggedIn) {
+      final hasSavedSession = prefs.getBool('isLoggedIn') ?? false;
+      if (hasSavedSession) {
+        _isLoggedIn = true;
+        _uid = prefs.getString('uid') ?? 'local_user';
+        _username = prefs.getString('username') ?? 'Usuário';
+        _email = prefs.getString('email') ?? 'offline@agendify.local';
         _isOfflineSession = true;
+        debugPrint('AuthProvider: sessão offline restaurada para $_email');
       }
     } catch (e) {
       debugPrint('SharedPreferences checkLoginStatus error: $e');
@@ -64,7 +66,6 @@ class AuthProvider extends ChangeNotifier {
     _email = user.email;
     _isOfflineSession = false;
 
-    // Tenta pegar displayName do Firestore (se falhar ou offline, usa fallback)
     final profile = await _userService.getProfile(user.uid);
     _username = profile?['displayName'] as String? ??
         user.displayName ??
@@ -73,7 +74,6 @@ class AuthProvider extends ChangeNotifier {
 
     _isLoggedIn = true;
 
-    // Persiste no cache local para suportar futuras aberturas offline
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
@@ -83,12 +83,11 @@ class AuthProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// Retorna null em caso de sucesso ou a mensagem de erro em caso de falha.
+  /// Tenta login online. Se sem internet, autentica offline imediatamente.
   Future<String?> login(String emailInput, String password, {bool forceCreate = false}) async {
     if (emailInput.isEmpty || password.isEmpty) return 'Preencha e-mail e senha.';
 
     final prefs = await SharedPreferences.getInstance();
-    final cachedEmail = prefs.getString('email');
     final cachedUid = prefs.getString('uid');
 
     try {
@@ -131,34 +130,47 @@ class AuthProvider extends ChangeNotifier {
       await prefs.setString('email', _email ?? '');
 
       notifyListeners();
-      return null; // sucesso online
+      return null;
     } on FirebaseAuthException catch (e) {
       debugPrint('AuthProvider.login FirebaseAuthException: code=${e.code} msg=${e.message}');
       if (e.code == 'network-request-failed') {
-        // Sem conexão: se já existia sessão prévia desse e-mail no aparelho, autoriza login offline!
-        if (cachedEmail != null &&
-            cachedEmail.trim().toLowerCase() == emailInput.trim().toLowerCase() &&
-            cachedUid != null &&
-            cachedUid.isNotEmpty) {
-          _uid = cachedUid;
-          _email = cachedEmail;
-          _username = prefs.getString('username') ?? cachedEmail.split('@').first;
-          _isLoggedIn = true;
-          _isOfflineSession = true;
-          await prefs.setBool('isLoggedIn', true);
-          notifyListeners();
-          return null; // Sucesso no login offline com credenciais salvas!
-        }
-        return 'Sem conexão com internet. Você pode entrar no Modo Offline clicando no botão abaixo.';
+        // Sem internet: autentica no modo offline automaticamente com o e-mail informado!
+        _uid = cachedUid ?? 'offline_${emailInput.hashCode}';
+        _email = emailInput;
+        _username = emailInput.split('@').first;
+        _isLoggedIn = true;
+        _isOfflineSession = true;
+        await prefs.setBool('isLoggedIn', true);
+        await prefs.setString('uid', _uid!);
+        await prefs.setString('username', _username!);
+        await prefs.setString('email', _email!);
+        notifyListeners();
+        return null; // Login offline concedido!
       }
       return _friendlyError(e.code);
     } catch (e) {
       debugPrint('AuthProvider.login error: $e');
+      // Qualquer outro erro de rede não mapeado também permite login offline
+      if (e.toString().toLowerCase().contains('network') ||
+          e.toString().toLowerCase().contains('socket') ||
+          e.toString().toLowerCase().contains('failed host lookup')) {
+        _uid = cachedUid ?? 'offline_${emailInput.hashCode}';
+        _email = emailInput;
+        _username = emailInput.split('@').first;
+        _isLoggedIn = true;
+        _isOfflineSession = true;
+        await prefs.setBool('isLoggedIn', true);
+        await prefs.setString('uid', _uid!);
+        await prefs.setString('username', _username!);
+        await prefs.setString('email', _email!);
+        notifyListeners();
+        return null;
+      }
       return 'Erro inesperado: $e';
     }
   }
 
-  /// Permite entrar diretamente no modo offline sem internet
+  /// Entrada direta em modo offline
   Future<void> loginOffline() async {
     final prefs = await SharedPreferences.getInstance();
     final cachedEmail = prefs.getString('email');
@@ -171,7 +183,7 @@ class AuthProvider extends ChangeNotifier {
     } else {
       _uid = 'local_user';
       _email = 'offline@agendify.local';
-      _username = 'Usuário Local';
+      _username = 'Usuário Offline';
       await prefs.setString('uid', _uid!);
       await prefs.setString('username', _username!);
       await prefs.setString('email', _email!);

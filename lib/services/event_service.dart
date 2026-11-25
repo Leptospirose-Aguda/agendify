@@ -24,12 +24,22 @@ class EventService {
 
   final ConnectivityService _connectivity;
   final OfflineCacheService _cache;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore? get _firestore {
+    try {
+      return FirebaseFirestore.instance;
+    } catch (_) {
+      return null;
+    }
+  }
 
   CollectionReference<Map<String, dynamic>>? _userEvents() {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return null;
-    return _firestore.collection('users').doc(uid).collection('events');
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return null;
+      return _firestore?.collection('users').doc(uid).collection('events');
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<List<EventModel>> getEvents() async {

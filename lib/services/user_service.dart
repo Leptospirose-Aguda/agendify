@@ -4,10 +4,16 @@ import 'package:flutter/foundation.dart';
 
 /// Gerencia dados de perfil do usuário no Firestore: users/{uid}
 class UserService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore? get _firestore {
+    try {
+      return FirebaseFirestore.instance;
+    } catch (_) {
+      return null;
+    }
+  }
 
-  DocumentReference<Map<String, dynamic>> _userDoc(String uid) =>
-      _firestore.collection('users').doc(uid);
+  DocumentReference<Map<String, dynamic>>? _userDoc(String uid) =>
+      _firestore?.collection('users').doc(uid);
 
   /// Cria ou atualiza o perfil do usuário no Firestore
   Future<void> upsertProfile({
@@ -17,7 +23,9 @@ class UserService {
     String? photoUrl,
   }) async {
     try {
-      await _userDoc(uid).set({
+      final doc = _userDoc(uid);
+      if (doc == null) return;
+      await doc.set({
         'uid': uid,
         'email': email,
         'displayName': displayName ?? email.split('@').first,
@@ -32,7 +40,9 @@ class UserService {
   /// Retorna os dados do perfil do usuário ou null se não existir ou se offline
   Future<Map<String, dynamic>?> getProfile(String uid) async {
     try {
-      final doc = await _userDoc(uid)
+      final docRef = _userDoc(uid);
+      if (docRef == null) return null;
+      final doc = await docRef
           .get()
           .timeout(const Duration(seconds: 3));
       return doc.data();
@@ -44,11 +54,11 @@ class UserService {
 
   /// Atualiza o displayName do usuário no Firestore e no FirebaseAuth
   Future<void> updateDisplayName(String displayName) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
       await user.updateDisplayName(displayName);
-      await _userDoc(user.uid).update({'displayName': displayName});
+      await _userDoc(user.uid)?.update({'displayName': displayName});
     } catch (e) {
       debugPrint('UserService.updateDisplayName error: $e');
       rethrow;
