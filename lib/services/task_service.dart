@@ -1,6 +1,6 @@
 // lib/services/task_service.dart
 //
-// Serviço de tarefas com suporte offline (mesma estratégia do EventService).
+// Serviço de tarefas com suporte offline resiliente.
 // Relatório Semanal #08 — 24/11/2026
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -21,16 +21,20 @@ class TaskService {
   final OfflineCacheService _cache;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  CollectionReference<Map<String, dynamic>> _userTasks() {
+  CollectionReference<Map<String, dynamic>>? _userTasks() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw Exception('Usuário não autenticado');
+    if (uid == null) return null;
     return _firestore.collection('users').doc(uid).collection('tasks');
   }
 
   Future<List<TaskModel>> getTasks() async {
-    if (_connectivity.isOnline) {
+    final col = _userTasks();
+    if (_connectivity.isOnline && col != null) {
       try {
-        final snap = await _userTasks().orderBy('createdAt', descending: true).get();
+        final snap = await col
+            .orderBy('createdAt', descending: true)
+            .get()
+            .timeout(const Duration(seconds: 4));
         final tasks = snap.docs.map((doc) {
           final d = doc.data();
           d['id'] = doc.id;
@@ -40,7 +44,7 @@ class TaskService {
         await _cache.seedFromFirebase(events: [], tasks: tasks);
         return tasks.map(TaskModel.fromJson).toList();
       } catch (e) {
-        debugPrint('TaskService.getTasks online error: $e — usando cache');
+        debugPrint('TaskService.getTasks online error: $e — usando cache offline');
       }
     }
 
@@ -57,12 +61,13 @@ class TaskService {
     final json = task.toJson();
     await _cache.upsertTask(json, synced: false);
 
-    if (_connectivity.isOnline) {
+    final col = _userTasks();
+    if (_connectivity.isOnline && col != null) {
       try {
-        await _userTasks().doc(task.id).set(json);
+        await col.doc(task.id).set(json).timeout(const Duration(seconds: 4));
         await _cache.markTaskSynced(task.id);
       } catch (e) {
-        debugPrint('TaskService.createTask Firebase error: $e');
+        debugPrint('TaskService.createTask Firebase error: $e — pendente');
       }
     }
   }
@@ -71,9 +76,10 @@ class TaskService {
     final json = task.toJson();
     await _cache.upsertTask(json, synced: false);
 
-    if (_connectivity.isOnline) {
+    final col = _userTasks();
+    if (_connectivity.isOnline && col != null) {
       try {
-        await _userTasks().doc(task.id).set(json, SetOptions(merge: true));
+        await col.doc(task.id).set(json, SetOptions(merge: true)).timeout(const Duration(seconds: 4));
         await _cache.markTaskSynced(task.id);
       } catch (e) {
         debugPrint('TaskService.updateTask Firebase error: $e');
@@ -84,9 +90,10 @@ class TaskService {
   Future<void> deleteTask(String taskId) async {
     await _cache.deleteTaskLocally(taskId, synced: false);
 
-    if (_connectivity.isOnline) {
+    final col = _userTasks();
+    if (_connectivity.isOnline && col != null) {
       try {
-        await _userTasks().doc(taskId).delete();
+        await col.doc(taskId).delete().timeout(const Duration(seconds: 4));
         await _cache.deleteTaskLocally(taskId, synced: true);
       } catch (e) {
         debugPrint('TaskService.deleteTask Firebase error: $e');
@@ -95,7 +102,8 @@ class TaskService {
   }
 
   Future<void> syncPendingTasks() async {
-    if (!_connectivity.isOnline) return;
+    final col = _userTasks();
+    if (!_connectivity.isOnline || col == null) return;
 
     final pending = await _cache.getPendingTasks();
     for (final row in pending) {
@@ -104,7 +112,7 @@ class TaskService {
           ..remove('synced')
           ..remove('deletedAt');
         m['isCompleted'] = (m['isCompleted'] as int?) == 1;
-        await _userTasks().doc(row['id'] as String).set(m, SetOptions(merge: true));
+        await col.doc(row['id'] as String).set(m, SetOptions(merge: true));
         await _cache.markTaskSynced(row['id'] as String);
       } catch (e) {
         debugPrint('TaskService.sync: erro ${row['id']}: $e');
@@ -114,7 +122,7 @@ class TaskService {
     final deletions = await _cache.getPendingDeletedTasks();
     for (final row in deletions) {
       try {
-        await _userTasks().doc(row['id'] as String).delete();
+        await col.doc(row['id'] as String).delete();
         await _cache.deleteTaskLocally(row['id'] as String, synced: true);
       } catch (e) {
         debugPrint('TaskService.sync: erro deleção ${row['id']}: $e');

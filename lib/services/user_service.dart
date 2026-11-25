@@ -29,10 +29,12 @@ class UserService {
     }
   }
 
-  /// Retorna os dados do perfil do usuário ou null se não existir
+  /// Retorna os dados do perfil do usuário ou null se não existir ou se offline
   Future<Map<String, dynamic>?> getProfile(String uid) async {
     try {
-      final doc = await _userDoc(uid).get();
+      final doc = await _userDoc(uid)
+          .get()
+          .timeout(const Duration(seconds: 3));
       return doc.data();
     } catch (e) {
       debugPrint('UserService.getProfile error: $e');

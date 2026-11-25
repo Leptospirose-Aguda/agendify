@@ -1,3 +1,4 @@
+// lib/features/auth/screens/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -19,7 +20,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
-  bool _isCreatingAccount = false; // true = modo cadastro, false = modo login
+  bool _isCreatingAccount = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      if (auth.isLoggedIn) {
+        _goToHome();
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -40,16 +52,23 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
+  Future<void> _goToHome() async {
+    final taskProvider = Provider.of<TaskProvider>(context, listen: false);
+    final eventProvider = Provider.of<EventProvider>(context, listen: false);
+    final categoryProvider = Provider.of<CategoryProvider>(context, listen: false);
+    await taskProvider.loadTasks();
+    await eventProvider.loadEvents();
+    await categoryProvider.loadCategories();
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _isLoading = true);
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final taskProvider = Provider.of<TaskProvider>(context, listen: false);
-    final eventProvider = Provider.of<EventProvider>(context, listen: false);
-    final categoryProvider = Provider.of<CategoryProvider>(context, listen: false);
-    final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
     final error = await authProvider.login(
@@ -62,11 +81,15 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (error == null) {
-      // sucesso
-      await taskProvider.loadTasks();
-      await eventProvider.loadEvents();
-      await categoryProvider.loadCategories();
-      navigator.pushReplacementNamed(AppRoutes.home);
+      if (authProvider.isOfflineSession) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Conectado em Modo Offline com credenciais salvas.'),
+            backgroundColor: Colors.teal,
+          ),
+        );
+      }
+      await _goToHome();
     } else {
       messenger.showSnackBar(
         SnackBar(
@@ -76,6 +99,22 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _enterOfflineMode() async {
+    setState(() => _isLoading = true);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.loginOffline();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Entrando no Modo Offline. Seus dados serão sincronizados ao conectar.'),
+        backgroundColor: Colors.teal,
+      ),
+    );
+    await _goToHome();
   }
 
   @override
@@ -106,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Título muda conforme o modo
+                    // Título
                     Text(
                       _isCreatingAccount ? 'Criar nova conta' : 'Entre na sua conta',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -175,6 +214,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         _isCreatingAccount
                             ? 'Já tenho uma conta — Entrar'
                             : 'Não tenho conta — Criar conta',
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 8),
+
+                    // Botão Modo Offline
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _isLoading ? null : _enterOfflineMode,
+                        icon: const Icon(Icons.cloud_off),
+                        label: const Text('Acessar modo offline'),
                       ),
                     ),
                   ],
